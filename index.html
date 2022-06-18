@@ -4,87 +4,94 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Radial</title>
+    <title>Rotatable</title>
   </head>
   <body>
-    <h1>Radial</h1>
+    <h1>Rotatable</h1>
     <style>
-      body{
+      body {
         padding: 2em;
         font-family: sans-serif;
       }
-      h1{
+      h1 {
         font-weight: normal;
       }
-      .circle {
+      .rotatable {
         height: 200px;
         width: 200px;
-        border: 35px solid red;
+        border: 15px solid red;
         margin: 50px 0;
-        border-radius: 50%;
-        border-color: yellow purple green black;
         cursor: grab;
         transform-origin: 50% 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        user-select: none;
       }
-      .circle:active{
+      .rotatable:active {
         cursor: grabbing;
       }
     </style>
-    <div class="circle"></div>
-    <pre></pre>
+    <div class="rotatable">0°</div>
+    <pre>
+      const rotatable = new Rotatable(".rotatable");
+      rotatable.on("rotate", (degrees) =>{
+        rotatable.el.innerHTML = Math.floor(degrees) + '°'
+      })
+    </pre>
     <script>
-      let dragging = false;
-      let debug = {}
-      const pre = document.querySelector("pre")
-      const circle = document.querySelector(".circle");
-      const half = circle.clientWidth / 2;
-      const deg = (x, y) => {
-        const rad = Math.atan2(y, x);
-        return rad * (180 / Math.PI) + 90;
-      };
+      class Rotatable {
+        dragging = false;
+        #events = {}
+        constructor(selector) {
+          this.el = document.querySelector(selector);
+          const deg = (x, y) => {
+            const rad = Math.atan2(y, x);
+            return rad * (180 / Math.PI) + 90;
+          };
 
-      const degDiff = (deg1, deg2) => {
-        let diff = deg1 - deg2;
-        if(diff < 0){
-          diff += 360
+          const degDiff = (deg1, deg2) => {
+            let diff = deg1 - deg2;
+            if (diff < 0) {
+              diff += 360;
+            }
+            return 360 - diff;
+          };
+
+          const clientCoordinates = (e) => {
+            const half = this.el.clientWidth / 2;
+            const x = e.x - (this.el.offsetLeft + half);
+            const y = e.y - (this.el.offsetTop + half);
+            return { x, y };
+          };
+
+          let downDeg, upDeg;
+          document.body.addEventListener("mousedown", (e) => {
+            this.dragging = true;
+            const { x, y } = clientCoordinates(e);
+            downDeg = degDiff(upDeg || 0, deg(x, y));
+          });
+          document.body.addEventListener("mouseup", (e) => {
+            this.dragging = false;
+          });
+          document.body.addEventListener("mousemove", (e) => {
+            if (!this.dragging) return;
+            const { x, y } = clientCoordinates(e);
+            const degrees = deg(x, y);
+            upDeg = degDiff(downDeg, degrees);
+            this.el.style.transform = `rotate(${upDeg}deg)`;
+            this.#events['rotate']?.(upDeg)
+          });
         }
-        return 360 - diff
+        on(eventName, callback){
+          this.#events[eventName] = callback
+        }
       }
 
-    
-      let downDeg, upDeg;
-      document.body.addEventListener("mousedown", (e) => {
-        dragging = true;
-        const x = e.x - (circle.offsetLeft + half);
-        const y = e.y - (circle.offsetTop + half);
-        downDeg = degDiff(upDeg || 0 , deg(x,y))
-      });
-      document.body.addEventListener("mouseup", (e) => {
-        dragging = false;
-        const x = e.x - (circle.offsetLeft + half);
-        const y = e.y - (circle.offsetTop + half);
-      });
-      document.body.addEventListener("mousemove", (e) => {
-        if (!dragging) return;
-        const x = e.x - (circle.offsetLeft + half);
-        const y = e.y - (circle.offsetTop + half);
-        const degrees = deg(x, y);
-        upDeg = degDiff(downDeg, degrees)
-
-        pre.innerHTML = JSON.stringify({
-          dragging,
-          x,
-          y,
-          degrees,
-          downDeg,
-          degDiff: upDeg
-        }, null, 2);
-        circle.style.transform = `rotate(${upDeg}deg)`;
-
-        // always rotates on 100,0
-
-        // TODO: save mousedown state
-      });
+      const rotatable = new Rotatable(".rotatable");
+      rotatable.on("rotate", (degrees) =>{
+        rotatable.el.innerHTML = Math.floor(degrees) + '°'
+      })
     </script>
   </body>
 </html>
